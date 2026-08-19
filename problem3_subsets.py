@@ -28,24 +28,41 @@ def format_subset(subset):
 
 
 def _read_items(text):
-    text = text.strip().strip("{}[]")
+    text = text.strip()
+    if len(text) >= 2 and text[0] + text[-1] in ("{}", "[]"):
+        text = text[1:-1].strip()
     if not text:
         return []
 
+    values = []
+    depth = 0
+    start = 0
+    for index, character in enumerate(text):
+        if character in "{[":
+            depth += 1
+        elif character in "}]":
+            depth -= 1
+        elif character == "," and depth == 0:
+            values.append(text[start:index].strip())
+            start = index + 1
+    values.append(text[start:].strip())
+
     items = []
-    for value in text.split(","):
-        value = value.strip()
+    for value in values:
         try:
             items.append(int(value))
         except ValueError:
-            items.append(value)
+            if len(value) >= 2 and value[0] + value[-1] in ("{}", "[]"):
+                nested = _read_items(value)
+                items.append(format_subset(nested))
+            else:
+                items.append(value)
     return items
 
 
 def main():
     items = _read_items(input("Enter set elements (e.g. {1,2}): "))
     print("All subsets:")
-    print(items)
     for subset in generate_subsets(items):
         print(format_subset(subset))
 

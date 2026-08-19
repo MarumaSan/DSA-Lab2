@@ -7,22 +7,52 @@ PRECEDENCE = {"+": 1, "-": 1, "*": 2, "/": 2}
 def _tokens(expression):
     """แยกนิพจน์เป็นตัวเลขและเครื่องหมาย โดยอ่านทีละตัว"""
     tokens = []
-    number = ""
+    index = 0
+    expect_operand = True
 
-    # เติมช่องว่างท้ายข้อความ เพื่อให้เลขตัวสุดท้ายถูกเก็บเข้า tokens
-    for character in expression + " ":
-        if character.isdigit() or character == ".":
-            number += character
-        else:
-            if number:
-                tokens.append(float(number))
-                number = ""
+    while index < len(expression):
+        character = expression[index]
 
-            # แยก operator และวงเล็บออกมาเป็น token ของตัวเอง
-            if character in "+-*/()":
-                tokens.append(character)
-            elif not character.isspace():
-                raise ValueError("Invalid character: " + character)
+        if character.isspace():
+            index += 1
+            continue
+
+        # เครื่องหมาย +/- หน้าเลข คือ unary sign เช่น -3 หรือ 2 * -4
+        signed_number = character in "+-" and expect_operand
+        if character.isdigit() or character == "." or signed_number:
+            if signed_number:
+                lookahead = index + 1
+                while lookahead < len(expression) and expression[lookahead].isspace():
+                    lookahead += 1
+                if lookahead == len(expression) or not (
+                    expression[lookahead].isdigit() or expression[lookahead] == "."
+                ):
+                    tokens.append(character)
+                    expect_operand = True
+                    index += 1
+                    continue
+
+            start = index
+            if signed_number:
+                index += 1
+            while index < len(expression) and (
+                expression[index].isdigit() or expression[index] == "."
+            ):
+                index += 1
+            try:
+                tokens.append(float(expression[start:index]))
+            except ValueError as error:
+                raise ValueError("Invalid number") from error
+            expect_operand = False
+            continue
+
+        if character in "+-*/()":
+            tokens.append(character)
+            expect_operand = character != ")"
+            index += 1
+            continue
+
+        raise ValueError("Invalid character: " + character)
 
     if not tokens:
         raise ValueError("Expression must not be empty")
